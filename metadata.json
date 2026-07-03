@@ -1,0 +1,6 @@
+{
+  "name": "Guest Experience Portal",
+  "description": "An interactive bento-grid styled hospitality portal for guests of Villa Azure, featuring concierge booking, real-time local info, active host messaging, house manuals, and safety guidelines.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
