@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Retrieve keys
-const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
-const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+const rawUrl = (import.meta as any).env.VITE_SUPABASE_URL || (import.meta as any).env.NEXT_PUBLIC_SUPABASE_URL || "https://axyxxccwqlfhbutinwdj.supabase.co";
+const rawAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || (import.meta as any).env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || (import.meta as any).env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_pEgB9vlno9H_jCQj_DfNww_YPe8iHyK";
 
 // Validation helpers to prevent client-side initialization crash on invalid/placeholder credentials
 const isValidSupabaseUrl = (url: any): boolean => {
@@ -51,16 +51,14 @@ const isValidSupabaseKey = (key: any): boolean => {
 };
 
 // Check if configured and not placeholder values
-export const isSupabaseConfigured = !!(
-  supabaseUrl && 
-  supabaseAnonKey && 
-  isValidSupabaseUrl(supabaseUrl) && 
-  isValidSupabaseKey(supabaseAnonKey)
-);
+export const isSupabaseConfigured = isValidSupabaseUrl(rawUrl) && isValidSupabaseKey(rawAnonKey);
+
+export const supabaseUrl = isSupabaseConfigured ? rawUrl.trim() : "";
+export const supabaseAnonKey = isSupabaseConfigured ? rawAnonKey.trim() : "";
 
 // Initialize client if configured
 export const supabase = isSupabaseConfigured 
-  ? createClient(supabaseUrl.trim(), supabaseAnonKey.trim()) 
+  ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
 
 // Types
@@ -88,7 +86,7 @@ export interface Message {
 export interface ConciergeRequest {
   id: string;
   booking_code: string;
-  category: "car" | "food" | "trip" | "spa";
+  category: "car" | "food" | "trip" | "spa" | "house";
   title: string;
   detail: string;
   price: string;
@@ -137,6 +135,94 @@ const DEFAULT_BOOKINGS: Booking[] = [
     wifi_ssid: "VillaSapphire_Guest_5G",
     wifi_password: "sapphiresun",
     gate_code: "#3030*"
+  },
+  {
+    id: "ab1",
+    booking_code: "1684861076010173478",
+    guest_name: "Marcus Aurelius",
+    villa_name: "Chowrest Sanctuary Villa",
+    check_in: "2026-07-03",
+    check_out: "2026-07-10",
+    wifi_ssid: "Chowrest_Sanctuary_5G",
+    wifi_password: "sanctuaryretreat",
+    gate_code: "#4861*"
+  },
+  {
+    id: "ab2",
+    booking_code: "1686708815346599245",
+    guest_name: "Serena Williams",
+    villa_name: "Chowrest Ocean Oasis",
+    check_in: "2026-07-04",
+    check_out: "2026-07-11",
+    wifi_ssid: "Chowrest_Ocean_5G",
+    wifi_password: "oceanoasisfree",
+    gate_code: "#7088*"
+  },
+  {
+    id: "ab3",
+    booking_code: "1716892251918662152",
+    guest_name: "Alexander Wright",
+    villa_name: "Chowrest Horizon Haven",
+    check_in: "2026-07-03",
+    check_out: "2026-07-09",
+    wifi_ssid: "Chowrest_Horizon_5G",
+    wifi_password: "horizonhavensky",
+    gate_code: "#8922*"
+  },
+  {
+    id: "ab4",
+    booking_code: "1716905792921069157",
+    guest_name: "Sophia Loren",
+    villa_name: "Chowrest Palm Retreat",
+    check_in: "2026-07-05",
+    check_out: "2026-07-12",
+    wifi_ssid: "Chowrest_Palm_5G",
+    wifi_password: "palmretreat2026",
+    gate_code: "#9057*"
+  },
+  {
+    id: "ab5",
+    booking_code: "1716861874617626825",
+    guest_name: "Liam Neeson",
+    villa_name: "Chowrest Jungle Canopy",
+    check_in: "2026-07-02",
+    check_out: "2026-07-08",
+    wifi_ssid: "Chowrest_Jungle_5G",
+    wifi_password: "junglecanopygreen",
+    gate_code: "#8618*"
+  },
+  {
+    id: "ab6",
+    booking_code: "1717026260606862074",
+    guest_name: "Grace Kelly",
+    villa_name: "Chowrest Serenity Suites",
+    check_in: "2026-07-03",
+    check_out: "2026-07-07",
+    wifi_ssid: "Chowrest_Serenity_5G",
+    wifi_password: "serenitysuiteslux",
+    gate_code: "#0262*"
+  },
+  {
+    id: "ab7",
+    booking_code: "1685591049457780061",
+    guest_name: "James Bond",
+    villa_name: "Chowrest Cliffside Manor",
+    check_in: "2026-07-01",
+    check_out: "2026-07-08",
+    wifi_ssid: "Chowrest_Cliffside_5G",
+    wifi_password: "cliffside007",
+    gate_code: "#5910*"
+  },
+  {
+    id: "ab8",
+    booking_code: "1685608943348499808",
+    guest_name: "Audrey Hepburn",
+    villa_name: "Chowrest Sunset Crest",
+    check_in: "2026-07-03",
+    check_out: "2026-07-10",
+    wifi_ssid: "Chowrest_Sunset_5G",
+    wifi_password: "sunsetcrestchic",
+    gate_code: "#6089*"
   }
 ];
 
@@ -199,12 +285,35 @@ function getLocal<T>(key: string, defaultValue: T): T {
     localStorage.setItem(key, JSON.stringify(defaultValue));
     return defaultValue;
   }
+  // Auto-merge new bookings to existing local storage
+  if (key === "sb_bookings" && Array.isArray(defaultValue)) {
+    try {
+      const parsed = JSON.parse(data) as any[];
+      const missingBookings = defaultValue.filter(
+        (defB: any) => !parsed.some((pB: any) => pB.booking_code === defB.booking_code)
+      );
+      if (missingBookings.length > 0) {
+        const merged = [...parsed, ...missingBookings];
+        localStorage.setItem(key, JSON.stringify(merged));
+        return merged as unknown as T;
+      }
+    } catch (e) {
+      console.warn("Failed merging booking data:", e);
+    }
+  }
   return JSON.parse(data);
 }
 
 function setLocal<T>(key: string, data: T) {
   localStorage.setItem(key, JSON.stringify(data));
 }
+
+// Helper to dispatch local custom events for instantaneous multi-component updates (when running without live Supabase)
+const dispatchLocalUpdate = (detail: { type: string; booking_code?: string; action?: "INSERT" | "UPDATE" | "DELETE"; data?: any; id?: string }) => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("local-db-update", { detail }));
+  }
+};
 
 // --- DATABASE SERVICE API WITH AUTO FALLBACKS ---
 
@@ -263,7 +372,11 @@ export const dbService = {
           .single();
         
         if (error) throw error;
-        if (data) return data as Booking;
+        if (data) {
+          const result = data as Booking;
+          dispatchLocalUpdate({ type: "booking", data: result });
+          return result;
+        }
       } catch (err) {
         console.warn("Supabase createBooking failed, saving locally:", err);
       }
@@ -272,6 +385,7 @@ export const dbService = {
     const bookings = getLocal<Booking[]>("sb_bookings", DEFAULT_BOOKINGS);
     bookings.push(newBooking);
     setLocal("sb_bookings", bookings);
+    dispatchLocalUpdate({ type: "booking", data: newBooking });
     return newBooking;
   },
 
@@ -332,7 +446,11 @@ export const dbService = {
           .single();
         
         if (error) throw error;
-        if (data) return data as Message;
+        if (data) {
+          const result = data as Message;
+          dispatchLocalUpdate({ type: "message", booking_code: bookingCode, data: result });
+          return result;
+        }
       } catch (err) {
         console.warn("Supabase addMessage failed, saving locally:", err);
       }
@@ -345,6 +463,7 @@ export const dbService = {
     };
     messages.push(newMsg);
     setLocal("sb_messages", messages);
+    dispatchLocalUpdate({ type: "message", booking_code: bookingCode, data: newMsg });
     return newMsg;
   },
 
@@ -405,7 +524,11 @@ export const dbService = {
           .single();
         
         if (error) throw error;
-        if (data) return data as ConciergeRequest;
+        if (data) {
+          const result = data as ConciergeRequest;
+          dispatchLocalUpdate({ type: "request", booking_code: bookingCode, action: "INSERT", data: result });
+          return result;
+        }
       } catch (err) {
         console.warn("Supabase createRequest failed, saving locally:", err);
       }
@@ -418,19 +541,25 @@ export const dbService = {
     };
     requests.unshift(newRequest);
     setLocal("sb_requests", requests);
+    dispatchLocalUpdate({ type: "request", booking_code: bookingCode, action: "INSERT", data: newRequest });
     return newRequest;
   },
 
   async updateRequestStatus(id: string, status: "pending" | "confirmed" | "completed"): Promise<boolean> {
     if (supabase) {
       try {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("concierge_requests")
           .update({ status })
-          .eq("id", id);
+          .eq("id", id)
+          .select()
+          .single();
         
-        if (!error) return true;
-        throw error;
+        if (!error && data) {
+          dispatchLocalUpdate({ type: "request", action: "UPDATE", data: data as ConciergeRequest });
+          return true;
+        }
+        if (error) throw error;
       } catch (err) {
         console.warn("Supabase updateRequestStatus failed, saving locally:", err);
       }
@@ -441,6 +570,7 @@ export const dbService = {
     if (index !== -1) {
       requests[index].status = status;
       setLocal("sb_requests", requests);
+      dispatchLocalUpdate({ type: "request", action: "UPDATE", data: requests[index] });
       return true;
     }
     return false;
@@ -454,7 +584,10 @@ export const dbService = {
           .delete()
           .eq("id", id);
         
-        if (!error) return true;
+        if (!error) {
+          dispatchLocalUpdate({ type: "request", action: "DELETE", id });
+          return true;
+        }
         throw error;
       } catch (err) {
         console.warn("Supabase deleteRequest failed, saving locally:", err);
@@ -464,6 +597,7 @@ export const dbService = {
     const requests = getLocal<ConciergeRequest[]>("sb_requests", DEFAULT_REQUESTS);
     const updated = requests.filter(r => r.id !== id);
     setLocal("sb_requests", updated);
+    dispatchLocalUpdate({ type: "request", action: "DELETE", id });
     return true;
   },
 
@@ -542,13 +676,214 @@ export const dbService = {
       });
     }
     setLocal("sb_rsvps", rsvps);
-    return rsvps.filter(r => r.booking_code === bookingCode).map(r => r.event_id);
+    const finalRsvps = rsvps.filter(r => r.booking_code === bookingCode).map(r => r.event_id);
+    dispatchLocalUpdate({ type: "rsvp", booking_code: bookingCode, data: finalRsvps });
+    return finalRsvps;
+  },
+
+  // --- REAL-TIME SUBSCRIPTION METHODS (WEBSOCKETS) ---
+  
+  subscribeToBookings(onChange: (booking: Booking, eventType: "INSERT") => void): () => void {
+    if (supabase) {
+      const channel = supabase
+        .channel("bookings_realtime")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "bookings"
+          },
+          (payload: any) => {
+            onChange(payload.new as Booking, "INSERT");
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+
+    // Local subscription fallback
+    const handleLocalUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.type === "booking") {
+        onChange(customEvent.detail.data as Booking, "INSERT");
+      }
+    };
+    window.addEventListener("local-db-update", handleLocalUpdate);
+    return () => {
+      window.removeEventListener("local-db-update", handleLocalUpdate);
+    };
+  },
+
+  subscribeToMessages(bookingCode: string, onInsertOrUpdate: (msg: Message) => void): () => void {
+    if (supabase) {
+      const channel = supabase
+        .channel(`messages_realtime_${bookingCode}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "messages",
+            filter: bookingCode ? `booking_code=eq.${bookingCode}` : undefined
+          },
+          (payload: any) => {
+            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+              onInsertOrUpdate(payload.new as Message);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+
+    // Local subscription fallback
+    const handleLocalUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (
+        customEvent.detail &&
+        customEvent.detail.type === "message" &&
+        (!bookingCode || customEvent.detail.booking_code === bookingCode)
+      ) {
+        onInsertOrUpdate(customEvent.detail.data as Message);
+      }
+    };
+    window.addEventListener("local-db-update", handleLocalUpdate);
+    return () => {
+      window.removeEventListener("local-db-update", handleLocalUpdate);
+    };
+  },
+
+  subscribeToAllMessages(onInsertOrUpdate: (msg: Message) => void): () => void {
+    if (supabase) {
+      const channel = supabase
+        .channel("all_messages_realtime")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "messages"
+          },
+          (payload: any) => {
+            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+              onInsertOrUpdate(payload.new as Message);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+
+    // Local subscription fallback
+    const handleLocalUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.type === "message") {
+        onInsertOrUpdate(customEvent.detail.data as Message);
+      }
+    };
+    window.addEventListener("local-db-update", handleLocalUpdate);
+    return () => {
+      window.removeEventListener("local-db-update", handleLocalUpdate);
+    };
+  },
+
+  subscribeToRequests(bookingCode: string, onChange: (req: ConciergeRequest, eventType: "INSERT" | "UPDATE" | "DELETE", oldId?: string) => void): () => void {
+    if (supabase) {
+      const channel = supabase
+        .channel(`requests_realtime_${bookingCode}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "concierge_requests",
+            filter: bookingCode ? `booking_code=eq.${bookingCode}` : undefined
+          },
+          (payload: any) => {
+            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+              onChange(payload.new as ConciergeRequest, payload.eventType);
+            } else if (payload.eventType === "DELETE") {
+              onChange(payload.old as ConciergeRequest, "DELETE", payload.old.id);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+
+    // Local subscription fallback
+    const handleLocalUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (
+        customEvent.detail &&
+        customEvent.detail.type === "request" &&
+        (!bookingCode || customEvent.detail.booking_code === bookingCode)
+      ) {
+        onChange(customEvent.detail.data as ConciergeRequest, customEvent.detail.action || "INSERT", customEvent.detail.id);
+      }
+    };
+    window.addEventListener("local-db-update", handleLocalUpdate);
+    return () => {
+      window.removeEventListener("local-db-update", handleLocalUpdate);
+    };
+  },
+
+  subscribeToAllRequests(onChange: (req: ConciergeRequest, eventType: "INSERT" | "UPDATE" | "DELETE", oldId?: string) => void): () => void {
+    if (supabase) {
+      const channel = supabase
+        .channel("all_requests_realtime")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "concierge_requests"
+          },
+          (payload: any) => {
+            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+              onChange(payload.new as ConciergeRequest, payload.eventType);
+            } else if (payload.eventType === "DELETE") {
+              onChange(payload.old as ConciergeRequest, "DELETE", payload.old.id);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+
+    // Local subscription fallback
+    const handleLocalUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.type === "request") {
+        onChange(customEvent.detail.data as ConciergeRequest, customEvent.detail.action || "INSERT", customEvent.detail.id);
+      }
+    };
+    window.addEventListener("local-db-update", handleLocalUpdate);
+    return () => {
+      window.removeEventListener("local-db-update", handleLocalUpdate);
+    };
   }
 };
 
 // SQL code snippet to print in the setup helper panel
 export const SUPABASE_SQL_SCHEMA = `-- Create Bookings Table
-CREATE TABLE bookings (
+CREATE TABLE IF NOT EXISTS bookings (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   booking_code text UNIQUE NOT NULL,
   guest_name text NOT NULL,
@@ -561,7 +896,7 @@ CREATE TABLE bookings (
 );
 
 -- Create Chat Messages Table
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   booking_code text NOT NULL REFERENCES bookings(booking_code) ON DELETE CASCADE,
   sender text CHECK (sender IN ('host', 'guest')) NOT NULL,
@@ -571,7 +906,7 @@ CREATE TABLE messages (
 );
 
 -- Create Concierge Requests Table
-CREATE TABLE concierge_requests (
+CREATE TABLE IF NOT EXISTS concierge_requests (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   booking_code text NOT NULL REFERENCES bookings(booking_code) ON DELETE CASCADE,
   category text CHECK (category IN ('car', 'food', 'trip', 'spa')) NOT NULL,
@@ -583,7 +918,7 @@ CREATE TABLE concierge_requests (
 );
 
 -- Create RSVPs Table
-CREATE TABLE rsvps (
+CREATE TABLE IF NOT EXISTS rsvps (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   booking_code text NOT NULL REFERENCES bookings(booking_code) ON DELETE CASCADE,
   event_id text NOT NULL,
@@ -596,12 +931,69 @@ INSERT INTO bookings (booking_code, guest_name, villa_name, check_in, check_out,
 VALUES 
   ('VILLA-101', 'The Anderson Family', 'Chowrest Villa Azure', '2026-06-30', '2026-07-06', 'VillaAzure_Guest_5G', 'serenity2024', '#1209*'),
   ('VILLA-202', 'Dr. Elizabeth Chen', 'Chowrest Villa Emerald', '2026-07-01', '2026-07-08', 'VillaEmerald_Guest_5G', 'emeraldserene', '#2202*'),
-  ('VILLA-303', 'Sato & Yuki Tanaka', 'Chowrest Villa Sapphire', '2026-07-02', '2026-07-05', 'VillaSapphire_Guest_5G', 'sapphiresun', '#3030*');
+  ('VILLA-303', 'Sato & Yuki Tanaka', 'Chowrest Villa Sapphire', '2026-07-02', '2026-07-05', 'VillaSapphire_Guest_5G', 'sapphiresun', '#3030*'),
+  ('1684861076010173478', 'Marcus Aurelius', 'Chowrest Sanctuary Villa', '2026-07-03', '2026-07-10', 'Chowrest_Sanctuary_5G', 'sanctuaryretreat', '#4861*'),
+  ('1686708815346599245', 'Serena Williams', 'Chowrest Ocean Oasis', '2026-07-04', '2026-07-11', 'Chowrest_Ocean_5G', 'oceanoasisfree', '#7088*'),
+  ('1716892251918662152', 'Alexander Wright', 'Chowrest Horizon Haven', '2026-07-03', '2026-07-09', 'Chowrest_Horizon_5G', 'horizonhavensky', '#8922*'),
+  ('1716905792921069157', 'Sophia Loren', 'Chowrest Palm Retreat', '2026-07-05', '2026-07-12', 'Chowrest_Palm_5G', 'palmretreat2026', '#9057*'),
+  ('1716861874617626825', 'Liam Neeson', 'Chowrest Jungle Canopy', '2026-07-02', '2026-07-08', 'Chowrest_Jungle_5G', 'junglecanopygreen', '#8618*'),
+  ('1717026260606862074', 'Grace Kelly', 'Chowrest Serenity Suites', '2026-07-03', '2026-07-07', 'Chowrest_Serenity_5G', 'serenitysuiteslux', '#0262*'),
+  ('1685591049457780061', 'James Bond', 'Chowrest Cliffside Manor', '2026-07-01', '2026-07-08', 'Chowrest_Cliffside_5G', 'cliffside007', '#5910*'),
+  ('1685608943348499808', 'Audrey Hepburn', 'Chowrest Sunset Crest', '2026-07-03', '2026-07-10', 'Chowrest_Sunset_5G', 'sunsetcrestchic', '#6089*')
+ON CONFLICT (booking_code) DO NOTHING;
 
 -- Seed Initial Chat Message
 INSERT INTO messages (booking_code, sender, text, time)
 VALUES 
   ('VILLA-101', 'host', 'Hello! I hope you''re settling in well. Do you need a reservation for the Muay Thai fight tonight?', '09:45 AM'),
   ('VILLA-101', 'guest', 'Yes please, 4 tickets for the ringside section if available!', '10:12 AM'),
-  ('VILLA-101', 'host', 'Done! I''ve secured your 4 ringside tickets.', '10:20 AM');
+  ('VILLA-101', 'host', 'Done! I''ve secured your 4 ringside tickets.', '10:20 AM')
+ON CONFLICT DO NOTHING;
+
+-- Enable Realtime (Run this inside your Supabase SQL editor to activate WebSocket events!)
+DO $$
+BEGIN
+  -- Add messages table to realtime if not already added
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_rel pr 
+      JOIN pg_publication p ON p.oid = pr.prpubid 
+      JOIN pg_class c ON c.oid = pr.prrelid 
+      WHERE p.pubname = 'supabase_realtime' AND c.relname = 'messages'
+    ) THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+    END IF;
+
+    -- Add concierge_requests table to realtime if not already added
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_rel pr 
+      JOIN pg_publication p ON p.oid = pr.prpubid 
+      JOIN pg_class c ON c.oid = pr.prrelid 
+      WHERE p.pubname = 'supabase_realtime' AND c.relname = 'concierge_requests'
+    ) THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE concierge_requests;
+    END IF;
+
+    -- Add bookings table to realtime if not already added
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_rel pr 
+      JOIN pg_publication p ON p.oid = pr.prpubid 
+      JOIN pg_class c ON c.oid = pr.prrelid 
+      WHERE p.pubname = 'supabase_realtime' AND c.relname = 'bookings'
+    ) THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE bookings;
+    END IF;
+
+    -- Add rsvps table to realtime if not already added
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_rel pr 
+      JOIN pg_publication p ON p.oid = pr.prpubid 
+      JOIN pg_class c ON c.oid = pr.prrelid 
+      WHERE p.pubname = 'supabase_realtime' AND c.relname = 'rsvps'
+    ) THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE rsvps;
+    END IF;
+  END IF;
+END $$;
 `;
+

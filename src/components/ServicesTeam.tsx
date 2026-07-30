@@ -21,7 +21,8 @@ import {
   ShieldCheck,
   Smartphone,
   CheckSquare,
-  AlertCircle
+  AlertCircle,
+  Home
 } from "lucide-react";
 import { dbService, Booking, Message, ConciergeRequest } from "../lib/supabase";
 
@@ -77,8 +78,45 @@ export default function ServicesTeam({ onLogout }: ServicesTeamProps) {
     loadData();
   }, []);
 
-  // Poll database every 3.5 seconds to pull client actions, chats, and RSVPs in real time
+  // --- REAL-TIME WEBSOCKET & LOCAL SUBSCRIPTIONS ---
   useEffect(() => {
+    // 1. Subscribe to new bookings
+    const unsubscribeBookings = dbService.subscribeToBookings((newBooking) => {
+      setBookings((prev) => {
+        const exists = prev.some((b) => b.booking_code === newBooking.booking_code);
+        if (exists) return prev;
+        return [...prev, newBooking];
+      });
+    });
+
+    // 2. Subscribe to all chat messages
+    const unsubscribeMessages = dbService.subscribeToAllMessages((newMsg) => {
+      setMessages((prev) => {
+        const exists = prev.some((m) => m.id === newMsg.id);
+        if (exists) {
+          return prev.map((m) => m.id === newMsg.id ? newMsg : m);
+        }
+        return [...prev, newMsg];
+      });
+    });
+
+    // 3. Subscribe to all concierge requests
+    const unsubscribeRequests = dbService.subscribeToAllRequests((req, eventType, oldId) => {
+      setRequests((prev) => {
+        if (eventType === "INSERT") {
+          const exists = prev.some((r) => r.id === req.id);
+          if (exists) return prev;
+          return [req, ...prev];
+        } else if (eventType === "UPDATE") {
+          return prev.map((r) => r.id === req.id ? req : r);
+        } else if (eventType === "DELETE") {
+          return prev.filter((r) => r.id !== (oldId || req.id));
+        }
+        return prev;
+      });
+    });
+
+    // 4. Gentle background polling fallback (safety net)
     const interval = setInterval(async () => {
       try {
         const [allRequests, allMessages] = await Promise.all([
@@ -93,11 +131,16 @@ export default function ServicesTeam({ onLogout }: ServicesTeamProps) {
           setMessages(allMessages);
         }
       } catch (err) {
-        console.warn("Staff dashboard polling failed:", err);
+        console.warn("Staff dashboard background sync failed:", err);
       }
-    }, 3500);
+    }, 8000);
 
-    return () => clearInterval(interval);
+    return () => {
+      unsubscribeBookings();
+      unsubscribeMessages();
+      unsubscribeRequests();
+      clearInterval(interval);
+    };
   }, [requests, messages]);
 
   // Scroll chat to bottom when selected booking or messages update
@@ -449,6 +492,7 @@ export default function ServicesTeam({ onLogout }: ServicesTeamProps) {
                         {req.category === "food" && <Utensils className="w-3.5 h-3.5 text-blue-600" />}
                         {req.category === "trip" && <Compass className="w-3.5 h-3.5 text-purple-600" />}
                         {req.category === "spa" && <Heart className="w-3.5 h-3.5 text-[#2D5A27]" />}
+                        {req.category === "house" && <Home className="w-3.5 h-3.5 text-indigo-600" />}
                         <span className="font-bold text-gray-700 truncate">{req.booking_code}</span>
                       </div>
                       <span className={`px-2 py-0.2 rounded text-[8px] font-bold uppercase tracking-wider ${

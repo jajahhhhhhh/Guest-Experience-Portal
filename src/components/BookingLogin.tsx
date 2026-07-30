@@ -1,6 +1,17 @@
 import React, { useState } from "react";
-import { Key, DoorOpen, Lock, Sparkles, AlertCircle, Database, ChevronRight, UserCheck } from "lucide-react";
+import { Key, DoorOpen, Lock, Sparkles, AlertCircle, Database, ChevronRight, UserCheck, Car } from "lucide-react";
 import { dbService } from "../lib/supabase";
+
+const REAL_AIRBNB_LISTINGS = [
+  { code: "1684861076010173478", name: "Chowrest Sanctuary Villa", guest: "Marcus Aurelius" },
+  { code: "1686708815346599245", name: "Chowrest Ocean Oasis", guest: "Serena Williams" },
+  { code: "1716892251918662152", name: "Chowrest Horizon Haven", guest: "Alexander Wright" },
+  { code: "1716905792921069157", name: "Chowrest Palm Retreat", guest: "Sophia Loren" },
+  { code: "1716861874617626825", name: "Chowrest Jungle Canopy", guest: "Liam Neeson" },
+  { code: "1717026260606862074", name: "Chowrest Serenity Suites", guest: "Grace Kelly" },
+  { code: "1685591049457780061", name: "Chowrest Cliffside Manor", guest: "James Bond" },
+  { code: "1685608943348499808", name: "Chowrest Sunset Crest", guest: "Audrey Hepburn" }
+];
 
 interface BookingLoginProps {
   onLoginSuccess: (type: "guest" | "staff", bookingCode?: string) => void;
@@ -152,30 +163,80 @@ export default function BookingLogin({ onLoginSuccess }: BookingLoginProps) {
             </button>
 
             {/* Quick Demo Assist */}
-            <div className="pt-4 border-t border-gray-100 text-[11px] text-gray-500">
-              <span className="font-bold text-gray-700">Demo Codes available:</span>
-              <div className="flex gap-2 mt-1 font-mono">
+            <div className="pt-4 border-t border-gray-100 text-[11px] text-gray-500 space-y-3.5">
+              <div className="bg-orange-50 border border-orange-100 p-3 rounded-2xl flex flex-col justify-between items-stretch gap-2">
+                <span className="font-extrabold text-orange-800 uppercase tracking-wider text-[9px] flex items-center gap-1.5">
+                  <Car className="w-3.5 h-3.5 text-orange-600" /> Direct Link: Car Rental settings
+                </span>
+                <p className="text-[10px] text-orange-700 font-semibold leading-normal">
+                  Skip manual lookup and go directly to the Concierge Services Car Rental panel.
+                </p>
                 <button
                   type="button"
-                  onClick={() => setBookingCode("VILLA-101")}
-                  className="bg-gray-100 hover:bg-[#2D5A27]/10 px-2 py-0.5 rounded text-gray-600 hover:text-[#2D5A27] cursor-pointer"
+                  onClick={async () => {
+                    const demoCode = "1684861076010173478"; // Marcus Aurelius
+                    setBookingCode(demoCode);
+                    setIsGuestLoading(true);
+                    try {
+                      const bookingExists = await dbService.getBookingByCode(demoCode);
+                      if (bookingExists) {
+                        window.location.hash = "#car";
+                        onLoginSuccess("guest", demoCode);
+                      }
+                    } catch (e) {
+                      console.error(e);
+                    } finally {
+                      setIsGuestLoading(false);
+                    }
+                  }}
+                  className="bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm shadow-orange-700/10 cursor-pointer"
                 >
-                  VILLA-101
+                  <Car className="w-3.5 h-3.5" /> Go to Car Rental Services
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setBookingCode("VILLA-202")}
-                  className="bg-gray-100 hover:bg-[#2D5A27]/10 px-2 py-0.5 rounded text-gray-600 hover:text-[#2D5A27] cursor-pointer"
-                >
-                  VILLA-202
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBookingCode("VILLA-303")}
-                  className="bg-gray-100 hover:bg-[#2D5A27]/10 px-2 py-0.5 rounded text-gray-600 hover:text-[#2D5A27] cursor-pointer"
-                >
-                  VILLA-303
-                </button>
+              </div>
+
+              <div>
+                <span className="font-extrabold text-gray-700 uppercase tracking-wider text-[9px]">Standard Demo Villas:</span>
+                <div className="flex gap-2 mt-1.5 font-mono flex-wrap">
+                  {["VILLA-101", "VILLA-202", "VILLA-303"].map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => setBookingCode(code)}
+                      className={`px-2.5 py-1.5 rounded text-[10px] font-bold cursor-pointer transition-all ${
+                        bookingCode === code 
+                          ? "bg-[#2D5A27] text-white shadow-sm" 
+                          : "bg-gray-100 hover:bg-[#2D5A27]/10 text-gray-600 hover:text-[#2D5A27]"
+                      }`}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <span className="font-extrabold text-gray-700 uppercase tracking-wider text-[9px] block mb-1.5">
+                  ✨ Real Airbnb Connected Listings:
+                </span>
+                <div className="relative">
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setBookingCode(e.target.value);
+                      }
+                    }}
+                    value={REAL_AIRBNB_LISTINGS.some(l => l.code === bookingCode) ? bookingCode : ""}
+                    className="w-full bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-xl py-2.5 px-3 text-[11px] text-gray-700 font-semibold outline-none transition-all cursor-pointer"
+                  >
+                    <option value="" disabled>-- Select Real Airbnb Booking --</option>
+                    {REAL_AIRBNB_LISTINGS.map((listing) => (
+                      <option key={listing.code} value={listing.code}>
+                        {listing.name} ({listing.code.substring(0, 6)}...) - {listing.guest}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </form>
